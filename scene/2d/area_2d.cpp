@@ -29,13 +29,14 @@
 #include "area_2d.h"
 #include "scene/scene_string_names.h"
 #include "servers/physics_2d_server.h"
+
 void Area2D::set_space_override_mode(SpaceOverride p_mode) {
 
 	space_override=p_mode;
 	Physics2DServer::get_singleton()->area_set_space_override_mode(get_rid(),Physics2DServer::AreaSpaceOverrideMode(p_mode));
 
-
 }
+
 Area2D::SpaceOverride Area2D::get_space_override_mode() const{
 
 	return space_override;
@@ -45,8 +46,8 @@ void Area2D::set_gravity_is_point(bool p_enabled){
 
 	gravity_is_point=p_enabled;
 	Physics2DServer::get_singleton()->area_set_param(get_rid(),Physics2DServer::AREA_PARAM_GRAVITY_IS_POINT,p_enabled);
-
 }
+
 bool Area2D::is_gravity_a_point() const{
 
 	return gravity_is_point;
@@ -56,10 +57,10 @@ void Area2D::set_gravity_distance_scale(real_t p_scale){
 
 	gravity_distance_scale=p_scale;
 	Physics2DServer::get_singleton()->area_set_param(get_rid(),Physics2DServer::AREA_PARAM_GRAVITY_DISTANCE_SCALE,p_scale);
-
 }
 
 real_t Area2D::get_gravity_distance_scale() const{
+
 	return gravity_distance_scale;
 }
 
@@ -67,8 +68,8 @@ void Area2D::set_gravity_vector(const Vector2& p_vec){
 
 	gravity_vec=p_vec;
 	Physics2DServer::get_singleton()->area_set_param(get_rid(),Physics2DServer::AREA_PARAM_GRAVITY_VECTOR,p_vec);
-
 }
+
 Vector2 Area2D::get_gravity_vector() const{
 
 	return gravity_vec;
@@ -79,6 +80,7 @@ void Area2D::set_gravity(real_t p_gravity){
 	gravity=p_gravity;
 	Physics2DServer::get_singleton()->area_set_param(get_rid(),Physics2DServer::AREA_PARAM_GRAVITY,p_gravity);
 }
+
 real_t Area2D::get_gravity() const{
 
 	return gravity;
@@ -89,6 +91,7 @@ void Area2D::set_linear_damp(real_t p_linear_damp){
 	linear_damp=p_linear_damp;
 	Physics2DServer::get_singleton()->area_set_param(get_rid(),Physics2DServer::AREA_PARAM_LINEAR_DAMP,p_linear_damp);
 }
+
 real_t Area2D::get_linear_damp() const{
 
 	return linear_damp;
@@ -115,7 +118,6 @@ real_t Area2D::get_priority() const{
 	return priority;
 }
 
-
 void Area2D::_body_enter_tree(ObjectID p_id) {
 
 	Object *obj = ObjectDB::get_instance(p_id);
@@ -132,7 +134,6 @@ void Area2D::_body_enter_tree(ObjectID p_id) {
 
 		emit_signal(SceneStringNames::get_singleton()->body_enter_shape,p_id,node,E->get().shapes[i].body_shape,E->get().shapes[i].area_shape);
 	}
-
 }
 
 void Area2D::_body_exit_tree(ObjectID p_id) {
@@ -149,7 +150,6 @@ void Area2D::_body_exit_tree(ObjectID p_id) {
 
 		emit_signal(SceneStringNames::get_singleton()->body_exit_shape,p_id,node,E->get().shapes[i].body_shape,E->get().shapes[i].area_shape);
 	}
-
 }
 
 void Area2D::_body_inout(int p_status,const RID& p_body, int p_instance, int p_body_shape,int p_area_shape) {
@@ -191,7 +191,6 @@ void Area2D::_body_inout(int p_status,const RID& p_body, int p_instance, int p_b
 		}
 
 	} else {
-
 		E->get().rc--;
 
 		if (node)
@@ -222,11 +221,7 @@ void Area2D::_body_inout(int p_status,const RID& p_body, int p_instance, int p_b
 	}
 
 	locked=false;
-
-
 }
-
-
 
 void Area2D::_area_enter_tree(ObjectID p_id) {
 
@@ -244,7 +239,6 @@ void Area2D::_area_enter_tree(ObjectID p_id) {
 
 		emit_signal(SceneStringNames::get_singleton()->area_enter_shape,p_id,node,E->get().shapes[i].area_shape,E->get().shapes[i].self_shape);
 	}
-
 }
 
 void Area2D::_area_exit_tree(ObjectID p_id) {
@@ -334,11 +328,7 @@ void Area2D::_area_inout(int p_status,const RID& p_area, int p_instance, int p_a
 	}
 
 	locked=false;
-
-
 }
-
-
 
 void Area2D::_clear_monitoring() {
 
@@ -357,6 +347,10 @@ void Area2D::_clear_monitoring() {
 			Object *obj = ObjectDB::get_instance(E->key());
 			Node *node = obj ? obj->cast_to<Node>() : NULL;
 			ERR_CONTINUE(!node);
+
+			node->disconnect(SceneStringNames::get_singleton()->enter_tree,this,SceneStringNames::get_singleton()->_body_enter_tree);
+			node->disconnect(SceneStringNames::get_singleton()->exit_tree,this,SceneStringNames::get_singleton()->_body_exit_tree);
+
 			if (!E->get().in_tree)
 				continue;
 
@@ -367,14 +361,11 @@ void Area2D::_clear_monitoring() {
 
 			emit_signal(SceneStringNames::get_singleton()->body_exit,obj);
 
-			node->disconnect(SceneStringNames::get_singleton()->enter_tree,this,SceneStringNames::get_singleton()->_body_enter_tree);
-			node->disconnect(SceneStringNames::get_singleton()->exit_tree,this,SceneStringNames::get_singleton()->_body_exit_tree);
 		}
 
 	}
 
 	{
-
 		Map<ObjectID,AreaState> bmcopy = area_map;
 		area_map.clear();
 		//disconnect all monitored stuff
@@ -388,6 +379,9 @@ void Area2D::_clear_monitoring() {
 				continue;
 			//ERR_CONTINUE(!node);
 
+			node->disconnect(SceneStringNames::get_singleton()->enter_tree,this,SceneStringNames::get_singleton()->_area_enter_tree);
+			node->disconnect(SceneStringNames::get_singleton()->exit_tree,this,SceneStringNames::get_singleton()->_area_exit_tree);
+
 			if (!E->get().in_tree)
 				continue;
 
@@ -397,12 +391,8 @@ void Area2D::_clear_monitoring() {
 			}
 
 			emit_signal(SceneStringNames::get_singleton()->area_exit,obj);
-
-			node->disconnect(SceneStringNames::get_singleton()->enter_tree,this,SceneStringNames::get_singleton()->_area_enter_tree);
-			node->disconnect(SceneStringNames::get_singleton()->exit_tree,this,SceneStringNames::get_singleton()->_area_exit_tree);
 		}
 	}
-
 }
 
 void Area2D::_notification(int p_what) {
@@ -410,16 +400,18 @@ void Area2D::_notification(int p_what) {
 	switch(p_what) {
 
 		case NOTIFICATION_EXIT_TREE: {
-
+		    monitoring_stored = monitoring;
+            set_enable_monitoring(false);
 			_clear_monitoring();
+		} break;
+		case NOTIFICATION_ENTER_TREE: {
+		    set_enable_monitoring(monitoring_stored);
 		} break;
 	}
 
 }
 
-
 void Area2D::set_enable_monitoring(bool p_enable) {
-
 
 	if (p_enable==monitoring)
 		return;
@@ -513,9 +505,6 @@ bool Area2D::overlaps_area(Node* p_area) const {
 	if (!E)
 		return false;
 	return E->get().in_tree;
-
-
-
 }
 
 bool Area2D::overlaps_body(Node* p_body) const{
@@ -525,7 +514,6 @@ bool Area2D::overlaps_body(Node* p_body) const{
 	if (!E)
 		return false;
 	return E->get().in_tree;
-
 }
 
 void Area2D::set_collision_mask(uint32_t p_mask) {
@@ -538,7 +526,6 @@ uint32_t Area2D::get_collision_mask() const {
 
 	return collision_mask;
 }
-
 
 void Area2D::set_layer_mask(uint32_t p_mask) {
 
@@ -559,14 +546,12 @@ void Area2D::set_collision_mask_bit(int p_bit, bool p_value) {
 	else
 		mask&=~(1<<p_bit);
 	set_collision_mask(mask);
-
 }
 
 bool Area2D::get_collision_mask_bit(int p_bit) const{
 
 	return get_collision_mask()&(1<<p_bit);
 }
-
 
 void Area2D::set_layer_mask_bit(int p_bit, bool p_value) {
 
@@ -576,14 +561,12 @@ void Area2D::set_layer_mask_bit(int p_bit, bool p_value) {
 	else
 		mask&=~(1<<p_bit);
 	set_layer_mask(mask);
-
 }
 
 bool Area2D::get_layer_mask_bit(int p_bit) const{
 
 	return get_layer_mask()&(1<<p_bit);
 }
-
 
 void Area2D::_bind_methods() {
 
@@ -668,7 +651,6 @@ void Area2D::_bind_methods() {
 	ADD_PROPERTYNO( PropertyInfo(Variant::BOOL,"monitorable"),_SCS("set_monitorable"),_SCS("is_monitorable"));
 	ADD_PROPERTYNO( PropertyInfo(Variant::INT,"collision/layers",PROPERTY_HINT_ALL_FLAGS),_SCS("set_layer_mask"),_SCS("get_layer_mask"));
 	ADD_PROPERTYNO( PropertyInfo(Variant::INT,"collision/mask",PROPERTY_HINT_ALL_FLAGS),_SCS("set_collision_mask"),_SCS("get_collision_mask"));
-
 }
 
 Area2D::Area2D() : CollisionObject2D(Physics2DServer::get_singleton()->area_create(),true) {
@@ -686,6 +668,7 @@ Area2D::Area2D() : CollisionObject2D(Physics2DServer::get_singleton()->area_crea
 	monitorable=false;
 	collision_mask=1;
 	layer_mask=1;
+	monitoring_stored = true;
 	set_enable_monitoring(true);
 	set_monitorable(true);
 }
