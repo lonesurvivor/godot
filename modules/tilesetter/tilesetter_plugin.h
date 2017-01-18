@@ -13,6 +13,8 @@
 #include "scene/gui/texture_rect.h"
 #include "scene/resources/tile_set.h"
 
+#include "core/io/resource_saver.h"
+
 class Tilesetter : public WindowDialog {
     GDCLASS(Tilesetter, WindowDialog);
 
@@ -26,8 +28,9 @@ class Tilesetter : public WindowDialog {
             ACTION_NEW_TILESET,
             ACTION_LOAD_TILESET,
             ACTION_SAVE_TILESET,
-            ACTION_LOAD_IMAGE,
-            ACTION_DELETE_IMAGE,
+            ACTION_SAVE_TILESET_AS,
+            ACTION_ADD_TEXTURE,
+            ACTION_DELETE_TEXTURE,
             ACTION_NEW_TILE,
             ACTION_DELETE_TILE
         };
@@ -35,7 +38,9 @@ class Tilesetter : public WindowDialog {
         // GUI
 
         WindowDialog* main_window;
-        EditorFileDialog *file_dialog;
+        EditorFileDialog *load_file_dialog;
+        EditorFileDialog *load_texture_dialog;
+        EditorFileDialog *save_file_dialog;
         AcceptDialog *message_dialog;
 
         VBoxContainer *top_container;
@@ -45,24 +50,28 @@ class Tilesetter : public WindowDialog {
         Button *main_menu_new_tileset;
         Button *main_menu_load_tileset;
         Button *main_menu_save_tileset;
-        Button *main_menu_load_image;
-        Button *main_menu_delete_image;
+        Button *main_menu_save_tileset_as;
+        Button *main_menu_add_texture;
+        Button *main_menu_delete_texture;
         Button *main_menu_new_tile;
         Button *main_menu_delete_tile;
 
         ItemList *tile_list;
 
-        TabContainer *texture_list;
+        TabContainer *texture_container;
 
         // internal stuff
 
         Ref<TileSet> current_tileset;
-        List<Ref<Texture>> current_textures;
+        Vector<Ref<Texture>> current_textures;
+        String current_tileset_path;
 
-        void _update();
+        void _update_gui(bool all = false);
 
         void _menu_action(int action);
         void _load_tileset(String path);
+        void _load_texture(String path);
+        void _save_tileset(String path);
 };
 
 class TextureContainer : public Control {
@@ -70,6 +79,7 @@ class TextureContainer : public Control {
 
     public:
         TextureContainer(const Ref<Texture> &texture);
+        Ref<Texture> get_texture();
     protected:
         static void _bind_methods();
     private:
