@@ -1,7 +1,7 @@
 /* register_types.cpp */
 
 #include "register_types.h"
-#include "object_type_db.h"
+#include "class_db.h"
 #include "tilesetter_plugin.h"
 
 void register_tilesetter_types() {
