@@ -40,9 +40,22 @@ class Tilesetter : public WindowDialog {
         };
 
         enum EditModes {
-            MODE_TEXTURE_AREA,
-            MODE_PIVOT,
-            MODE_COLLISION_POLYGON
+            EDIT_MODE_TEXTURE_AREA,
+            EDIT_MODE_PIVOT,
+            EDIT_MODE_COLLISION_POLYGON
+        };
+
+        enum SnapModes {
+            SNAP_MODE_NONE,
+            SNAP_MODE_PIXEL,
+            SNAP_MODE_GRID
+        };
+
+        enum DefaultPivotModes {
+            DEFAULT_PIVOT_MODE_BOTTOM_LEFT,
+            DEFAULT_PIVOT_MODE_BOTTOM_RIGHT,
+            DEFAULT_PIVOT_MODE_TOP_LEFT,
+            DEFAULT_PIVOT_MODE_TOP_RIGHT,
         };
 
         // GUI
@@ -55,9 +68,6 @@ class Tilesetter : public WindowDialog {
 
         VBoxContainer *top_container;
 
-        HBoxContainer *controls_container;
-        OptionButton *edit_mode_selector;
-
         HBoxContainer *main_menu;
         Button *main_menu_new_tileset;
         Button *main_menu_load_tileset;
@@ -67,6 +77,17 @@ class Tilesetter : public WindowDialog {
         Button *main_menu_delete_texture;
         Button *main_menu_new_tile;
         Button *main_menu_delete_tile;
+
+        HBoxContainer *controls_container;
+        OptionButton *edit_mode_selector;
+        ToolButton *grid_show_enabler;
+        ToolButton *grid_snap_enabler;
+        SpinBox *grid_step_x_selector;
+        SpinBox *grid_step_y_selector;
+
+        OptionButton *pivot_snap_mode_selector;
+        OptionButton *default_pivot_mode_selector;
+        ToolButton *pivot_keep_offset_enabler;
 
         HSplitContainer *bottom_container;
         ItemList *tile_list;
@@ -80,7 +101,17 @@ class Tilesetter : public WindowDialog {
         int current_mode;
         int selected_tile;
 
-        void _update_gui(bool all = false);
+        bool grid_show_enabled;
+        bool grid_snap_enabled;
+        Vector2 grid_step;
+
+        int pivot_snap_mode;
+        int pivot_default_mode;
+        bool pivot_keep_offset_enabled;
+
+        void _update_gui();
+        void _update_texture_container();
+        void _update_texture_containers();
 
         void _gui_input(const InputEvent &ev);
         void _menu_action(int action);
@@ -89,6 +120,15 @@ class Tilesetter : public WindowDialog {
         void _load_tileset(String path);
         void _load_texture(String path);
         void _save_tileset(String path);
+
+        void _grid_step_changed(float value, bool x);
+        void _grid_show_set(bool show);
+        void _grid_snap_set(bool snap);
+        void _pivot_snap_mode_set(int mode);
+        void _pivot_default_mode_set(int mode);
+        void _pivot_keep_offset_set(bool keep_offset);
+
+        void _notification(int what);
 };
 
 class TextureContainer : public Control {
@@ -109,10 +149,10 @@ class TextureContainer : public Control {
         bool dragging;
         real_t texture_scale;
 
-        void _notification(int p_what);
-
         virtual void _gui_input(const InputEvent& ev);
         void _draw_container();
+
+        void _notification(int what);
 };
 
 class TilesetterPlugin : public EditorPlugin

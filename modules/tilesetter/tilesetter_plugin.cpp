@@ -15,27 +15,11 @@ void Tilesetter::_gui_input(const InputEvent &ev) {
 
 }
 
-void Tilesetter::_update_gui(bool all) {
-
-    if(all) {
-        while(texture_container->get_child_count() > 0) {
-            memdelete(texture_container->get_child(0));
-        }
-
-        for(int i = 0;i<current_textures.size();i++) {
-            TextureContainer *c = memnew(TextureContainer(current_textures[i], this));
-            texture_container->add_child(c);
-        }
-    }
-
-    TextureContainer *c = texture_container->get_current_tab_control()->cast_to<TextureContainer>();
-    if(c) {
-        c->update();
-    }
-
-    bool tileset_loaded = false;
+void Tilesetter::_update_gui() {
 
     tile_list->clear();
+
+    bool tileset_loaded = false;
 
     if(!current_tileset.is_null()) {
         List<int> tile_ids;
@@ -64,6 +48,24 @@ void Tilesetter::_update_gui(bool all) {
         set_title("Tilesetter");
 }
 
+void Tilesetter::_update_texture_container() {
+    TextureContainer *c = texture_container->get_current_tab_control()->cast_to<TextureContainer>();
+    if(c)
+        c->update();
+}
+
+void Tilesetter::_update_texture_containers() {
+    while(texture_container->get_child_count() > 0) {
+        memdelete(texture_container->get_child(0));
+    }
+
+    for(int i = 0;i<current_textures.size();i++) {
+        TextureContainer *c = memnew(TextureContainer(current_textures[i], this));
+        texture_container->add_child(c);
+    }
+}
+
+
 
 void Tilesetter::_menu_action(int action) {
 
@@ -74,7 +76,9 @@ void Tilesetter::_menu_action(int action) {
             current_tileset.instance();
             current_tileset_path = "";
             current_textures.clear();
-            _update_gui(true);
+
+            _update_texture_containers();
+            _update_gui();
             break;
 
         case ACTION_LOAD_TILESET:
@@ -84,7 +88,7 @@ void Tilesetter::_menu_action(int action) {
         case ACTION_SAVE_TILESET:
             if(current_tileset_path != "") {
                 _save_tileset(current_tileset_path);
-                _update_gui(false);
+                _update_gui();
             } else {
                 save_file_dialog->popup_centered();
             }
@@ -111,7 +115,8 @@ void Tilesetter::_menu_action(int action) {
                     if(current_tileset->tile_get_texture(E->get()) == t)
                         current_tileset->remove_tile(E->get());
                 }
-                _update_gui(true);
+                _update_texture_containers();
+                _update_gui();
             }
             break; }
 
@@ -119,7 +124,7 @@ void Tilesetter::_menu_action(int action) {
             int tile_id = current_tileset->get_last_unused_tile_id();
             current_tileset->create_tile(tile_id);
             current_tileset->tile_set_name(tile_id, "Tile " + itos(tile_id));
-            _update_gui(false);
+            _update_gui();
             break; }
 
         case ACTION_DELETE_TILE:
@@ -127,7 +132,8 @@ void Tilesetter::_menu_action(int action) {
             for(int i=0;i<selected.size();i++) {
                 current_tileset->remove_tile(tile_list->get_item_metadata(selected[i]));
             }
-            _update_gui(false);
+            _update_texture_container();
+            _update_gui();
             break;
     }
 
@@ -153,6 +159,7 @@ void Tilesetter::_tile_select(int list_id) {
             texture_container->set_current_tab(i);
     }
 
+    _update_texture_container();
     _update_gui();
 }
 
@@ -167,6 +174,7 @@ void Tilesetter::_load_tileset(String path) {
     }
 
     current_tileset_path = path;
+    selected_tile = -1;
 
     List<int> tile_ids;
     current_tileset->get_tile_list(&tile_ids);
@@ -182,7 +190,8 @@ void Tilesetter::_load_tileset(String path) {
         current_textures.push_back(t);
     }
 
-    _update_gui(true);
+    _update_texture_containers();
+    _update_gui();
 }
 
 
@@ -199,7 +208,7 @@ void Tilesetter::_save_tileset(String path) {
 
     current_tileset_path = path;
 
-    _update_gui(false);
+    _update_gui();
 }
 
 void Tilesetter::_load_texture(String path) {
@@ -219,13 +228,57 @@ void Tilesetter::_load_texture(String path) {
 
     current_textures.push_back(txt);
 
-    _update_gui(true);
+    _update_texture_containers();
+    _update_gui();
+}
+
+
+void Tilesetter::_grid_step_changed(float value, bool x) {
+    if(x)
+        grid_step.x = value;
+    else
+        grid_step.y = value;
+
+    _update_texture_container();
+}
+
+void Tilesetter::_grid_show_set(bool show) {
+    grid_show_enabled = show;
+    _update_texture_container();
+}
+
+void Tilesetter::_grid_snap_set(bool snap) {
+    grid_snap_enabled = snap;
+    _update_texture_container();
+}
+
+void Tilesetter::_pivot_snap_mode_set(int mode) {
+    pivot_snap_mode = mode;
+}
+
+void Tilesetter::_pivot_default_mode_set(int mode) {
+    pivot_default_mode = mode;
+}
+
+void Tilesetter::_pivot_keep_offset_set(bool keep_offset) {
+    pivot_keep_offset_enabled = keep_offset;
+}
+
+
+
+void Tilesetter::_notification(int what) {
+    switch(what) {
+    case NOTIFICATION_READY:
+        grid_show_enabler->set_icon( get_icon("Grid", "EditorIcons"));
+        grid_snap_enabler->set_icon( get_icon("Snap", "EditorIcons"));
+        break;
+    }
 }
 
 
 Tilesetter::Tilesetter() {
 
-    Vector2 window_size(800,600);
+    Vector2 window_size(1280,800);
 
     set_size(window_size);
     set_title("Tilesetter");
@@ -317,12 +370,93 @@ Tilesetter::Tilesetter() {
     controls_container = memnew(HBoxContainer);
 
     edit_mode_selector = memnew (OptionButton);
-    edit_mode_selector->add_item("Select Area", MODE_TEXTURE_AREA);
-    edit_mode_selector->add_item("Set Pivot", MODE_PIVOT);
-    edit_mode_selector->add_item("Set Collision Polygon", MODE_COLLISION_POLYGON);
+    edit_mode_selector->add_item("Select Area", EDIT_MODE_TEXTURE_AREA);
+    edit_mode_selector->add_item("Set Pivot", EDIT_MODE_PIVOT);
+    edit_mode_selector->add_item("Set Collision Polygon", EDIT_MODE_COLLISION_POLYGON);
     edit_mode_selector->connect("item_selected", this, "_mode_select");
-    edit_mode_selector->select(MODE_TEXTURE_AREA);
+    edit_mode_selector->select(EDIT_MODE_TEXTURE_AREA);
     controls_container->add_child(edit_mode_selector);
+
+    controls_container->add_child( memnew( VSeparator ));
+
+
+	grid_show_enabled = true;
+	grid_show_enabler = memnew( ToolButton );
+	grid_show_enabler->set_text(TTR("Show Grid"));
+	grid_show_enabler->set_focus_mode(FOCUS_NONE);
+	grid_show_enabler->set_toggle_mode(true);
+	grid_show_enabler->set_pressed(grid_show_enabled);
+	grid_show_enabler->connect("toggled",this,"_grid_show_set");
+	controls_container->add_child(grid_show_enabler);
+
+
+	grid_snap_enabled = true;
+	grid_snap_enabler = memnew( ToolButton );
+	grid_snap_enabler->set_text(TTR("Grid Snap"));
+	grid_snap_enabler->set_focus_mode(FOCUS_NONE);
+	grid_snap_enabler->set_toggle_mode(true);
+	grid_snap_enabler->set_pressed(grid_snap_enabled);
+	grid_snap_enabler->connect("toggled",this,"_grid_snap_set");
+	controls_container->add_child(grid_snap_enabler);
+
+
+	controls_container->add_child( memnew( Label(TTR("Grid Step:")) ) );
+
+
+	grid_step = Vector2(16,16);
+    grid_step_x_selector = memnew(SpinBox);
+    grid_step_x_selector->set_min(1);
+    grid_step_x_selector->set_step(1);
+    grid_step_x_selector->set_suffix("px");
+	grid_step_x_selector->connect("value_changed", this, "_grid_step_changed", varray(true));
+    grid_step_x_selector->set_value(grid_step.x);
+    controls_container->add_child(grid_step_x_selector);
+
+    grid_step_y_selector = memnew(SpinBox);
+    grid_step_y_selector->set_min(1);
+    grid_step_y_selector->set_step(1);
+    grid_step_y_selector->set_suffix("px");
+	grid_step_y_selector->connect("value_changed", this, "_grid_step_changed", varray(false));
+    grid_step_y_selector->set_value(grid_step.y);
+    controls_container->add_child(grid_step_y_selector);
+
+
+
+    controls_container->add_child( memnew( VSeparator ));
+
+	controls_container->add_child( memnew( Label(TTR("Pivot Snap:")) ) );
+
+	pivot_snap_mode = SNAP_MODE_PIXEL;
+    pivot_snap_mode_selector = memnew(OptionButton);
+    pivot_snap_mode_selector->add_item("None", SNAP_MODE_NONE);
+    pivot_snap_mode_selector->add_item("Pixel Snap", SNAP_MODE_PIXEL);
+    pivot_snap_mode_selector->add_item("Grid Snap", SNAP_MODE_GRID);
+    pivot_snap_mode_selector->connect("item_selected", this, "_pivot_snap_mode_set");
+    pivot_snap_mode_selector->select(pivot_snap_mode);
+    controls_container->add_child(pivot_snap_mode_selector);
+
+    controls_container->add_child( memnew( Label(TTR("Default Pivot Position:")) ) );
+
+    pivot_default_mode = DEFAULT_PIVOT_MODE_BOTTOM_LEFT;
+    default_pivot_mode_selector = memnew(OptionButton);
+    default_pivot_mode_selector->add_item("Bottom Left", DEFAULT_PIVOT_MODE_BOTTOM_LEFT);
+    default_pivot_mode_selector->add_item("Bottom Right", DEFAULT_PIVOT_MODE_BOTTOM_RIGHT);
+    default_pivot_mode_selector->add_item("Top Left", DEFAULT_PIVOT_MODE_TOP_LEFT);
+    default_pivot_mode_selector->add_item("Top Right", DEFAULT_PIVOT_MODE_TOP_RIGHT);
+    default_pivot_mode_selector->connect("item_selected", this, "_pivot_default_mode_set");
+    default_pivot_mode_selector->select(pivot_default_mode);
+    controls_container->add_child(default_pivot_mode_selector);
+
+
+	pivot_keep_offset_enabled = true;
+	pivot_keep_offset_enabler = memnew( ToolButton );
+	pivot_keep_offset_enabler->set_text(TTR("Keep Offset"));
+	pivot_keep_offset_enabler->set_focus_mode(FOCUS_NONE);
+	pivot_keep_offset_enabler->set_toggle_mode(true);
+	pivot_keep_offset_enabler->set_pressed(pivot_keep_offset_enabled);
+	pivot_keep_offset_enabler->connect("toggled",this,"_pivot_keep_offset_set");
+	controls_container->add_child(pivot_keep_offset_enabler);
+
 
 
     top_container->add_child(controls_container);
@@ -355,8 +489,10 @@ Tilesetter::Tilesetter() {
 
     top_container->add_child(bottom_container);
 
+
     current_tileset.instance();
     selected_tile = -1;
+
     _update_gui();
 }
 
@@ -369,19 +505,19 @@ void Tilesetter::_bind_methods() {
 	ClassDB::bind_method(_MD("_load_tileset"),&Tilesetter::_load_tileset);
 	ClassDB::bind_method(_MD("_load_texture"),&Tilesetter::_load_texture);
 	ClassDB::bind_method(_MD("_save_tileset"),&Tilesetter::_save_tileset);
+	ClassDB::bind_method(_MD("_grid_step_changed"),&Tilesetter::_grid_step_changed);
+	ClassDB::bind_method(_MD("_grid_show_set"),&Tilesetter::_grid_show_set);
+	ClassDB::bind_method(_MD("_grid_snap_set"),&Tilesetter::_grid_snap_set);
+	ClassDB::bind_method(_MD("_pivot_snap_mode_set"),&Tilesetter::_pivot_snap_mode_set);
+	ClassDB::bind_method(_MD("_pivot_default_mode_set"),&Tilesetter::_pivot_default_mode_set);
+	ClassDB::bind_method(_MD("_pivot_keep_offset_set"),&Tilesetter::_pivot_keep_offset_set);
 }
 
 /////////////////////////////////////////////////
 
-void TextureContainer::_notification(int p_what) {
-    switch(p_what) {
-        case NOTIFICATION_ENTER_TREE:
-        if(!is_connected("draw", this, "_draw_container"))
-            connect("draw", this, "_draw_container");
-    }
-}
 
 void TextureContainer::_gui_input(const InputEvent& ev) {
+
     if(ev.type == InputEvent::MOUSE_BUTTON) {
         const InputEventMouseButton &mb = ev.mouse_button;
 
@@ -403,19 +539,41 @@ void TextureContainer::_gui_input(const InputEvent& ev) {
                 texture_rect->set_scale(Vector2(texture_scale, texture_scale));
             }
         } else if(mb.button_index == BUTTON_LEFT) {
-            if(mb.pressed) {
-                Point2 mouse_pos_on_texture = texture_rect->get_transform().affine_inverse().xform(Point2(mb.x, mb.y));
 
-                if(tilesetter->current_mode == Tilesetter::MODE_TEXTURE_AREA) {
+            if(tilesetter->selected_tile == -1)
+                return;
+
+            if(mb.pressed) {
+                const Point2 &mouse_pos_on_texture = texture_rect->get_transform().affine_inverse().xform(Point2(mb.x, mb.y));
+
+                if(tilesetter->current_mode == Tilesetter::EDIT_MODE_TEXTURE_AREA) {
                     drawing_mouse_rect = true;
                     mouse_rect_start = mouse_pos_on_texture;
-                    mouse_rect_start.x = Math::round(mouse_rect_start.x);
-                    mouse_rect_start.y = Math::round(mouse_rect_start.y);
+                    if(tilesetter->grid_snap_enabled) {
+                        mouse_rect_start.x = Math::stepify(mouse_rect_start.x, tilesetter->grid_step.x);
+                        mouse_rect_start.y = Math::stepify(mouse_rect_start.y, tilesetter->grid_step.y);
+
+                    } else {
+                        mouse_rect_start.x = Math::round(mouse_rect_start.x);
+                        mouse_rect_start.y = Math::round(mouse_rect_start.y);
+                    }
 
                     mouse_rect_end = mouse_rect_start;
-                } else if(tilesetter->current_mode == Tilesetter::MODE_PIVOT) {
+
+                } else if(tilesetter->current_mode == Tilesetter::EDIT_MODE_PIVOT) {
+
+                    Point2 mp = mouse_pos_on_texture;
+                    if(tilesetter->pivot_snap_mode == Tilesetter::SNAP_MODE_PIXEL) {
+                        mp.x = Math::stepify(mp.x, 1);
+                        mp.y = Math::stepify(mp.y, 1);
+                    } else if(tilesetter->pivot_snap_mode == Tilesetter::SNAP_MODE_GRID) {
+                        mp.x = Math::stepify(mp.x, tilesetter->grid_step.x);
+                        mp.y = Math::stepify(mp.y, tilesetter->grid_step.x);
+                    }
+
+
                     Rect2 tile_region = tilesetter->current_tileset->tile_get_region(tilesetter->selected_tile);
-                    tilesetter->current_tileset->tile_set_texture_offset(tilesetter->selected_tile, tile_region.get_pos()-mouse_pos_on_texture);
+                    tilesetter->current_tileset->tile_set_texture_offset(tilesetter->selected_tile, tile_region.get_pos()-mp);
                 }
 
             } else {
@@ -424,8 +582,31 @@ void TextureContainer::_gui_input(const InputEvent& ev) {
 
                     Rect2 r(Vector2(Math::fast_ftoi(mouse_rect_start.x), Math::fast_ftoi(mouse_rect_start.y)), Size2(0,0));
                     r.expand_to(Vector2(Math::fast_ftoi(mouse_rect_end.x), Math::fast_ftoi(mouse_rect_end.y)));
+
+                    Rect2 old_r = tilesetter->current_tileset->tile_get_region(tilesetter->selected_tile);
+
                     tilesetter->current_tileset->tile_set_region(tilesetter->selected_tile, r);
                     tilesetter->current_tileset->tile_set_texture(tilesetter->selected_tile, texture_rect->get_texture());
+
+                    Vector2 texture_offset(0,0);
+                    Vector2 old_offset = tilesetter->current_tileset->tile_get_texture_offset(tilesetter->selected_tile);
+
+                    switch(tilesetter->pivot_default_mode) {
+                        case Tilesetter::DEFAULT_PIVOT_MODE_TOP_LEFT:
+                            texture_offset = tilesetter->pivot_keep_offset_enabled ? old_offset : Vector2(0,0);
+                            break;
+                        case Tilesetter::DEFAULT_PIVOT_MODE_TOP_RIGHT:
+                            texture_offset = tilesetter->pivot_keep_offset_enabled ? old_offset - Vector2(r.get_size().x - old_r.get_size().x, 0)  : -Vector2(r.get_size().x, 0);
+                            break;
+                        case Tilesetter::DEFAULT_PIVOT_MODE_BOTTOM_LEFT:
+                            texture_offset = tilesetter->pivot_keep_offset_enabled ? old_offset - Vector2(0, r.get_size().y - old_r.get_size().y)  : -Vector2(0, r.get_size().y);
+                            break;
+                        case Tilesetter::DEFAULT_PIVOT_MODE_BOTTOM_RIGHT:
+                            texture_offset = tilesetter->pivot_keep_offset_enabled ? old_offset - (old_r.get_size()-r.get_size()) : -r.get_size();
+                            break;
+                    }
+
+                    tilesetter->current_tileset->tile_set_texture_offset(tilesetter->selected_tile, texture_offset);
 
                     mouse_rect_start = Point2(0,0);
                     mouse_rect_end = Point2(0,0);
@@ -441,10 +622,18 @@ void TextureContainer::_gui_input(const InputEvent& ev) {
 
         if(dragging) {
             texture_rect->set_pos(texture_rect->get_pos() + Vector2(mm.relative_x, mm.relative_y));
+
         } else if(drawing_mouse_rect) {
             mouse_rect_end = texture_rect->get_transform().affine_inverse().xform(Point2(mm.x, mm.y));
-            mouse_rect_end.x = Math::round(mouse_rect_end.x);
-            mouse_rect_end.y = Math::round(mouse_rect_end.y);
+
+            if(tilesetter->grid_snap_enabled) {
+                mouse_rect_end.x = Math::stepify(mouse_rect_end.x, tilesetter->grid_step.x);
+                mouse_rect_end.y = Math::stepify(mouse_rect_end.y, tilesetter->grid_step.y);
+
+            } else {
+                mouse_rect_end.x = Math::round(mouse_rect_end.x);
+                mouse_rect_end.y = Math::round(mouse_rect_end.y);
+            }
         }
 
         update();
@@ -455,20 +644,27 @@ void TextureContainer::_draw_container() {
 
     // Grid
 
-    Point2 pos = texture_rect->get_pos();
+    const Point2 &pos = texture_rect->get_pos();
 
-    for(real_t p = pos.x - Math::stepify(pos.x, 16 * texture_scale);p < get_size().width;p+=16 * texture_scale) {
-        draw_line(Point2(p,0), Point2(p,get_size().height), Color(1,1,1,0.2));
+    if(tilesetter->grid_show_enabled) {
+
+        for(real_t p = pos.x - Math::stepify(pos.x, tilesetter->grid_step.x * texture_scale);p < get_size().width;p+=tilesetter->grid_step.x * texture_scale) {
+            draw_line(Point2(p,0), Point2(p,get_size().height), Color(1,1,1,0.2));
+        }
+
+        for(real_t p = pos.y - Math::stepify(pos.y, tilesetter->grid_step.y * texture_scale);p < get_size().height;p+=tilesetter->grid_step.y * texture_scale) {
+            draw_line(Point2(0,p), Point2(get_size().width,p), Color(1,1,1,0.2));
+        }
     }
 
-    for(real_t p = pos.y - Math::stepify(pos.y, 16 * texture_scale);p < get_size().height;p+=16 * texture_scale) {
-        draw_line(Point2(0,p), Point2(get_size().width,p), Color(1,1,1,0.2));
-    }
+
+    if(tilesetter->selected_tile == -1)
+        return;
 
     // Region rect
 
     bool tile_uses_texture = tilesetter->current_tileset->tile_get_texture(tilesetter->selected_tile) == texture_rect->get_texture();
-    Rect2 tile_region = tilesetter->current_tileset->tile_get_region(tilesetter->selected_tile);
+    const Rect2 &tile_region = tilesetter->current_tileset->tile_get_region(tilesetter->selected_tile);
 
     Rect2 r;
     if(drawing_mouse_rect) {
@@ -504,6 +700,15 @@ void TextureContainer::_draw_container() {
 Ref<Texture> TextureContainer::get_texture() {
     return texture_rect->get_texture();
 }
+
+void TextureContainer::_notification(int what) {
+    switch(what) {
+        case NOTIFICATION_ENTER_TREE:
+        if(!is_connected("draw", this, "_draw_container"))
+            connect("draw", this, "_draw_container");
+    }
+}
+
 
 TextureContainer::TextureContainer(const Ref<Texture> &texture, Tilesetter *parent) {
 
