@@ -14,9 +14,13 @@
 #include "scene/resources/tile_set.h"
 
 #include "core/io/resource_saver.h"
+#include "os/keyboard.h"
+#include "os/input.h"
 
 class Tilesetter : public WindowDialog {
     GDCLASS(Tilesetter, WindowDialog);
+
+    friend class TextureContainer;
 
     public:
         Tilesetter();
@@ -35,6 +39,12 @@ class Tilesetter : public WindowDialog {
             ACTION_DELETE_TILE
         };
 
+        enum EditModes {
+            MODE_TEXTURE_AREA,
+            MODE_PIVOT,
+            MODE_COLLISION_POLYGON
+        };
+
         // GUI
 
         WindowDialog* main_window;
@@ -44,7 +54,9 @@ class Tilesetter : public WindowDialog {
         AcceptDialog *message_dialog;
 
         VBoxContainer *top_container;
-        HSplitContainer *bottom_container;
+
+        HBoxContainer *controls_container;
+        OptionButton *edit_mode_selector;
 
         HBoxContainer *main_menu;
         Button *main_menu_new_tileset;
@@ -56,8 +68,8 @@ class Tilesetter : public WindowDialog {
         Button *main_menu_new_tile;
         Button *main_menu_delete_tile;
 
+        HSplitContainer *bottom_container;
         ItemList *tile_list;
-
         TabContainer *texture_container;
 
         // internal stuff
@@ -65,10 +77,15 @@ class Tilesetter : public WindowDialog {
         Ref<TileSet> current_tileset;
         Vector<Ref<Texture>> current_textures;
         String current_tileset_path;
+        int current_mode;
+        int selected_tile;
 
         void _update_gui(bool all = false);
 
+        void _gui_input(const InputEvent &ev);
         void _menu_action(int action);
+        void _mode_select(int mode);
+        void _tile_select(int list_id);
         void _load_tileset(String path);
         void _load_texture(String path);
         void _save_tileset(String path);
@@ -78,16 +95,24 @@ class TextureContainer : public Control {
     GDCLASS(TextureContainer, Control);
 
     public:
-        TextureContainer(const Ref<Texture> &texture);
+        TextureContainer(const Ref<Texture> &texture, Tilesetter *parent);
         Ref<Texture> get_texture();
     protected:
         static void _bind_methods();
     private:
+        Tilesetter *tilesetter;
         TextureRect *texture_rect;
+        bool drawing_mouse_rect;
+        Point2 mouse_rect_start;
+        Point2 mouse_rect_end;
+
         bool dragging;
-        real_t zoom;
+        real_t texture_scale;
+
+        void _notification(int p_what);
 
         virtual void _gui_input(const InputEvent& ev);
+        void _draw_container();
 };
 
 class TilesetterPlugin : public EditorPlugin

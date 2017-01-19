@@ -6,7 +6,7 @@
 
 void register_tilesetter_types() {
 #ifdef TOOLS_ENABLED
-    ClassDB::register_class<TilesetterPlugin>();
+    //ClassDB::register_class<TilesetterPlugin>();
     EditorPlugins::add_by_type<TilesetterPlugin>();
 #endif
 }
